@@ -1,4 +1,5 @@
 const sequelize = require('../database/config')
+const { Op } = require('sequelize')
 const Role = require('../models/roleModel')
 const User = require('../models/userModel')
 const UserStatus = require('../models/userStatusModel')
@@ -17,7 +18,7 @@ async function getAuth(req, res) {
       roleName: req.found.Role.name
     }
     // Creamos el token
-    const token = createToken(User)
+    const token = createToken(user)
     // eliminamos el id del usuario
     delete user.id
     // Agregamos el token 
@@ -32,16 +33,58 @@ async function getAuth(req, res) {
   }
 }
 
-async function getAll(req, res) {
+async function paginate(req, res) {
   try {
+    let { id } = req.user.data
+    let { perPage, currentPage } = req.query
     let users = await User.findAndCountAll({
       include: [Role, UserStatus],
-      raw: true
+      raw: true,
+      where: {
+        id: { [Op.ne]: id }
+      },
+      limit: parseInt(perPage),
+      offset: (parseInt(currentPage) - 1) * parseInt(perPage)
     })
     res.json({
       data: users
     })
   } catch(error) {
+    console.log(error)
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
+async function paginateAndFilter(req, res) {
+  try {
+    let { id } = req.user.data
+    let { filter, perPage, currentPage } = req.body
+    perPage = parseInt(perPage)
+    currentPage = parseInt(currentPage)
+    let users = await User.findAndCountAll({
+      include: [Role, UserStatus],
+      raw: true,
+      where: { 
+        id: { [Op.ne]: id},      
+        [Op.or]: [
+          { name: { [Op.like]: `%${filter}%` } },
+          { lastname: { [Op.like]: `%${filter}%` } },
+          { username: { [Op.like]: `%${filter}%` } },
+          { '$Role.name$': { [Op.like]: `%${filter}%` } },
+          { '$UserStatus.name$': { [Op.like]: `%${filter}%` } }
+        ]
+      },
+      limit: parseInt(perPage),
+      offset: (currentPage - 1) * perPage
+
+    })
+    console.log(users)
+    res.json({ data: users })
+  } catch(error) {
+    console.log(error)
     let errorName = 'request'
     let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
     let errorKeys = [errorName]
@@ -50,27 +93,25 @@ async function getAll(req, res) {
 }
 
 
-async function add() {
-  /* const transaction = await sequelize.transaction()
+async function add(req, res) {
+  const transaction = await sequelize.transaction()
   try {
-    let { userData, userRoleData } = req.body
     // Creamos el hash
-    userData.password =  await generateHash(req.body.password)
-    const user = await User.create(userData, {transaction})
-    // Le agregamos el id del usuario al nuevo rol que guardará
-    userRoleData.userId =  user.id 
-    // Guardamos el nuevo role
-    await UserRoles.create(userRoleData, {transaction})
+    req.body.password =  await generateHash(req.body.password)
+    await User.create(req.body, {transaction})
     // Guardamos los cambios
     await transaction.commit() 
     return res.json({
-      result: true,
-      message: 'Usuario registrado correctamente'
+      done: true,
+      msg: 'Usuario registrado correctamente'
     })
   } catch (error) {
     await transaction.rollback()
-    res.status(500).json({error})
-  } */
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al crear usuario', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
 }
 
 async function update() {
@@ -115,8 +156,8 @@ async function resetPassword(req, res) {
 }
 
 async function remove(req, res) {
+  const transaction = await sequelize.transaction()
   try {
-    const transaction = await sequelize.transaction()
     if(!req.params.id){
       return res.json({ error: 'No se ha recibido el id del registro a eliminar' })
     }
@@ -125,28 +166,24 @@ async function remove(req, res) {
     // Si no lo encontramos devolvemos mensaje de error
     if(!userToDelete) {
       return res.json({
-        result: false,
-        message: 'Usuario no existe en el sistema'
+        error: false,
+        msg: 'Usuario no existe en el sistema'
       })
     }
     // Si existe el usuario entonces lo eliminamos
-    const affectedRows = await User.destroy({ where: { id: req.params.id }, transaction})
-    // Si no lo encontramos devolvemos meensaje de error
-    if(affectedRows === 0) {
-      await transaction.rollback()
-      return res.json({
-        result: false,
-        message: 'Usuario no se pudo eliminar del sistema'
-      })
-    }
+    await User.destroy({ where: { id: req.params.id }, transaction})
     // Si todo ha ido bien guardamos los cambios
     await transaction.commit()
     return res.json({
-      result: true,
-      message: 'Usuario eliminado correctamente'
+      done: true,
+      msg: 'Usuario eliminado correctamente'
     })
   } catch (error) {
-    res.status(500).json({error})
+    await transaction.rollback()
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al crear usuario', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
   }
 }
 
@@ -156,6 +193,7 @@ module.exports = {
   update,
   remove,
   getAuth,
-  getAll,
+  paginate,
+  paginateAndFilter,
   resetPassword
 }
