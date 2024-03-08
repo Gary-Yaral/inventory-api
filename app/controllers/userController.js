@@ -1,5 +1,7 @@
 const sequelize = require('../database/config')
+const Role = require('../models/roleModel')
 const User = require('../models/userModel')
+const UserStatus = require('../models/userStatusModel')
 const { generateHash } = require('../utils/bcrypt')
 const { getErrorFormat } = require('../utils/errorsFormat')
 const { createToken } = require('../utils/jwt')
@@ -25,6 +27,23 @@ async function getAuth(req, res) {
   } catch (error) {
     let errorName = 'request'
     let errors = {...getErrorFormat(errorName, 'Error al validar credenciales', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
+async function getAll(req, res) {
+  try {
+    let users = await User.findAndCountAll({
+      include: [Role, UserStatus],
+      raw: true
+    })
+    res.json({
+      data: users
+    })
+  } catch(error) {
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }
@@ -131,10 +150,12 @@ async function remove(req, res) {
   }
 }
 
+
 module.exports = {
   add,
   update,
   remove,
   getAuth,
+  getAll,
   resetPassword
 }

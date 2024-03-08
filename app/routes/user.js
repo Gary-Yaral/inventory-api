@@ -4,6 +4,7 @@ const { validatorPasswordReset } = require('../validators/passwordValidatorReset
 const { validateToken } = require('../middlewares/auth')
 const router = require('express').Router()
 
+router.get('/', validateToken, userController.getAll)
 router.put('/password', validatorPasswordReset, userController.resetPassword)
 router.post('/', validateToken, validatorUser, userController.add)
 router.put('/:id/:roleId', validateToken, validatorUser, userController.update)
