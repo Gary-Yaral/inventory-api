@@ -36,7 +36,6 @@ const userValidator = [
     if(req.repeatedUser) {
       return res.json({ error: true, msg: `Usuario: ${req.body.username} ya existe.`})
     }
-
     validateRequest(req, res, next)
   }
 ]

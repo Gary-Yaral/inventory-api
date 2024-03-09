@@ -3,19 +3,14 @@ const { getErrorFormat } = require('../utils/errorsFormat')
 function findId(model) {
   return async function(req, res, next){
     try {
-      let errorName = 'id'
       if(!req.params.id) {
-        let errors = {...getErrorFormat(errorName, 'No se ha recibido el id', 'params')}
-        let errorKeys = [errorName]
-        res.status(400).json({ errors, errorKeys })
+        return res.json({ error: true, msg: 'No se ha recibido el parametro id' })
       }
       const found = await model.findByPk(req.params.id)
       if(!found) {
-        let errors = {...getErrorFormat(errorName, 'No existe un registro con ese identificador', 'params')}
-        let errorKeys = [errorName]
-        res.status(400).json({ errors, errorKeys })
+        return res.json({ error: true, msg: 'No existe el registro que desea actualizar' })
       }
-      req.body.found = found
+      req.found = found
       next()
     } catch (error) {
       let errorName = 'request'

@@ -6,6 +6,7 @@ const { getErrorFormat } = require('../utils/errorsFormat.js')
 const Role = require('../models/roleModel.js')
 const UserStatus = require('../models/userStatusModel.js')
 const { validateHash } = require('../utils/bcrypt.js')
+const { USER_STATUS } = require('../constants/index.js')
 
 const authValidator = [
   check('username')
@@ -28,6 +29,10 @@ const authValidator = [
         const passwordValid = await validateHash(req.body.password, foundUser.password)
         if(!passwordValid) {
           return res.json({error: true, msg: 'Error de usuario o contraseña'})
+        }
+        // Verificamos si está activo
+        if(foundUser.statusId === USER_STATUS.BLOQUEADO) {
+          return res.json({error: true, msg: 'Usuario desahilitado. Comuníquese con el administrador'})
         }
         // Eliminamos la constraseña
         delete foundUser.password

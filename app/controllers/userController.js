@@ -81,7 +81,6 @@ async function paginateAndFilter(req, res) {
       offset: (currentPage - 1) * perPage
 
     })
-    console.log(users)
     res.json({ data: users })
   } catch(error) {
     console.log(error)
@@ -114,25 +113,27 @@ async function add(req, res) {
   }
 }
 
-async function update() {
-  /*const transaction = await sequelize.transaction()
+async function update(req, res) {
+  const transaction = await sequelize.transaction()
   try {
-   /*  let { userData, userRoleData} = req.body
     if(req.body.password) {
-      userData.password =  await generateHash(req.body.password)
+      req.body.password =  await generateHash(req.body.password)
     }
-    await User.update(userData, {where: {id: req.params.id}}, {transaction})
-    await UserRoles.update(userRoleData, {where: {id: req.params.roleId}}, {transaction}) 
+    await User.update(req.body, {where: {id: req.found.id}}, {transaction})
     // Si todo ha ido bien guardamos los cambios
     await transaction.commit()
     return res.json({
-      result: true,
-      message: 'Usuario actualizado correctamente'
+      done: true,
+      msg: 'Usuario actualizado correctamente'
     })
   } catch (error) {
+    console.log(error)
     await transaction.rollback()
-    res.json(error)
-  } */
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al actualizar usuario', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
 }
 
 async function resetPassword(req, res) {
