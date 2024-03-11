@@ -24,11 +24,7 @@ async function findRepeatedUser(req, data) {
 const Provider = require('../models/providerModel')
 
 async function findRepeatedProvider(req, data) {
-  const user = await Provider.findOne({ 
-    attributes: { exclude: ['password'] }, 
-    where: data, 
-    raw:true 
-  })
+  const user = await Provider.findOne({ where: data, raw:true })
   if(user) {
     // Verificamos si está intentando actualizar
     if(req.params.id) {
@@ -43,6 +39,7 @@ async function findRepeatedProvider(req, data) {
     }
   }
 }
+
 
 
 module.exports = { findRepeatedUser, findRepeatedProvider }

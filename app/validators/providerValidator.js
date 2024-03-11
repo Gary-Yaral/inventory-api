@@ -3,6 +3,7 @@ const { validateRequest } = require('../middlewares/evaluateRequest.js')
 const { customMessages } = require('../utils/customMessages.js')
 const { textRegex, emailRegex } = require('../utils/regExp.js')
 const { findRepeatedProvider } = require('../utils/functions.js')
+const Provider = require('../models/providerModel.js')
 
 const providerValidator = [
   check('name')
@@ -34,8 +35,15 @@ const providerValidator = [
     .custom((value) => !value.includes(' ')).withMessage(customMessages['include.blanks'])
     .custom((value) => emailRegex.test(value)).withMessage(customMessages['email.invalid']),
   async (req, res, next) => {
-    if(req.repeatedProvider) {
-      return res.json({ error: true, msg: `R.U.C: ${req.body.ruc} ya existe.`})
+    let found = await Provider.findOne({where:{ruc: req.body.ruc}})
+    if(found) {
+      if(req.params.id) {
+        if(parseInt(req.params.id) !== found.id) {
+          return res.json({ error: true, msg: `R.U.C: ${req.body.ruc} ya existe.`})
+        }
+      } else {
+        return res.json({ error: true, msg: `R.U.C: ${req.body.ruc} ya existe.`})
+      }
     }
     validateRequest(req, res, next)
   }

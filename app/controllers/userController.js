@@ -5,7 +5,7 @@ const User = require('../models/userModel')
 const UserStatus = require('../models/userStatusModel')
 const { generateHash } = require('../utils/bcrypt')
 const { getErrorFormat } = require('../utils/errorsFormat')
-const { createToken } = require('../utils/jwt')
+const { createToken, OPTIONS_TOKEN } = require('../utils/jwt')
 
 async function getAuth(req, res) {
   try {
@@ -18,14 +18,48 @@ async function getAuth(req, res) {
       roleName: req.found.Role.name
     }
     // Creamos el token
-    const token = createToken(user)
+    const token = createToken(user, OPTIONS_TOKEN.create)
+    // Creamos el refresh token
+    const refreshToken = createToken(user, OPTIONS_TOKEN.refresh)
     // eliminamos el id del usuario
     delete user.id
     // Agregamos el token 
     user.token = token
+    user.refreshToken = refreshToken
     // Restornamos los datos de la sesión
     return res.json({data: user})
   } catch (error) {
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al validar credenciales', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
+async function refreshtoken(req, res) {
+  try {
+    // Verificamos si aun existe ese usuario
+    const found = await User.findOne({include: [Role, UserStatus], where: {id: req.user.data.id}})
+    if(!found) {
+      return res.status(401).json({ message: 'Token invalid' })
+    } 
+    // Creamos la data del usuario
+    const user = {
+      id: found.id,
+      name: found.name,
+      lastname: found.lastname,
+      role: found.roleId,
+      roleName: found.Role.name
+    }
+    // Creamos el token
+    const token = createToken(user, OPTIONS_TOKEN.create)
+    const refreshToken = createToken(user, OPTIONS_TOKEN.refresh)
+    user.token = token
+    user.refreshToken = refreshToken
+    // Restornamos los datos de la sesión
+    return res.json({data: user})
+  } catch (error) {
+    console.log(error)
     let errorName = 'request'
     let errors = {...getErrorFormat(errorName, 'Error al validar credenciales', errorName) }
     let errorKeys = [errorName]
@@ -195,6 +229,7 @@ module.exports = {
   remove,
   getAuth,
   paginate,
+  refreshtoken,
   paginateAndFilter,
   resetPassword
 }

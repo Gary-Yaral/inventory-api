@@ -13,6 +13,7 @@ const customMessages = {
   'telephone.invalid': 'Telefono no es válido',
   'include.blanks': 'No se permiten espacios',
   'price': 'Debe ser un número mayor a 0',
+  'date': 'Ingrese una fecha válida',
   'blanks': 'No se permite espacios en blanco al principio ni al final ni espacios dobles'
 }
 

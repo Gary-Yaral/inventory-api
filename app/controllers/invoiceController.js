@@ -1,14 +1,14 @@
 const sequelize = require('../database/config')
 const { Op } = require('sequelize')
-
 const { getErrorFormat } = require('../utils/errorsFormat')
 const Provider = require('../models/providerModel')
+const Invoice = require('../models/invoiceModel')
 
 async function getAll(req, res) {
   try {
-    let providers = await Provider.findAll()
+    let invoices = await Invoice.findAll()
     res.json({
-      data: providers
+      data: invoices
     })
   } catch(error) {
     console.log(error)
@@ -22,12 +22,14 @@ async function getAll(req, res) {
 async function paginate(req, res) {
   try {
     let { perPage, currentPage } = req.query
-    let providers = await Provider.findAndCountAll({
+    let invoices = await Invoice.findAndCountAll({
+      include: [Provider],
+      raw: true,
       limit: parseInt(perPage),
       offset: (parseInt(currentPage) - 1) * parseInt(perPage)
     })
     res.json({
-      data: providers
+      data: invoices
     })
   } catch(error) {
     console.log(error)
@@ -43,21 +45,22 @@ async function paginateAndFilter(req, res) {
     let { filter, perPage, currentPage } = req.body
     perPage = parseInt(perPage)
     currentPage = parseInt(currentPage)
-    let providers = await Provider.findAndCountAll({
+    let invoices = await Invoice.findAndCountAll({
+      include: [Provider],
       where: { 
         [Op.or]: [
-          { ruc: { [Op.like]: `%${filter}%` } },
-          { name: { [Op.like]: `%${filter}%` } },
-          { telephone: { [Op.like]: `%${filter}%` } },
-          { address: { [Op.like]: `%${filter}%` } },
-          { email: { [Op.like]: `%${filter}%` } }
+          { code: { [Op.like]: `%${filter}%` } },
+          { date: { [Op.like]: `%${filter}%` } },
+          { observation: { [Op.like]: `%${filter}%` } },
+          { '$Provider.name$': { [Op.like]: `%${filter}%` } }
         ]
       },
+      raw: true,
       limit: perPage,
       offset: (currentPage - 1) * perPage
 
     })
-    res.json({ data: providers })
+    res.json({ data: invoices })
   } catch(error) {
     console.log(error)
     let errorName = 'request'
@@ -71,17 +74,18 @@ async function paginateAndFilter(req, res) {
 async function add(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    await Provider.create(req.body, {transaction})
+    await Invoice.create(req.body, {transaction})
     // Guardamos los cambios
     await transaction.commit() 
     return res.json({
       done: true,
-      msg: 'Proveedor registrado correctamente'
+      msg: 'Factura registrado correctamente'
     })
   } catch (error) {
+    console.log(error)
     await transaction.rollback()
     let errorName = 'request'
-    let errors = {...getErrorFormat(errorName, 'Error al crear proveedor', errorName) }
+    let errors = {...getErrorFormat(errorName, 'Error al crear factura', errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }
@@ -90,18 +94,18 @@ async function add(req, res) {
 async function update(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    await Provider.update(req.body, {where: {id: req.found.id}}, {transaction})
+    await Invoice.update(req.body, {where: {id: req.found.id}}, {transaction})
     // Si todo ha ido bien guardamos los cambios
     await transaction.commit()
     return res.json({
       done: true,
-      msg: 'Proveedor actualizado correctamente'
+      msg: 'Factura actualizado correctamente'
     })
   } catch (error) {
     console.log(error)
     await transaction.rollback()
     let errorName = 'request'
-    let errors = {...getErrorFormat(errorName, 'Error al actualizar proveedor', errorName) }
+    let errors = {...getErrorFormat(errorName, 'Error al actualizar factura', errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }
@@ -110,17 +114,17 @@ async function update(req, res) {
 async function remove(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    await Provider.destroy({ where: { id: req.params.id }, transaction})
+    await Invoice.destroy({ where: { id: req.params.id }, transaction})
     // Si todo ha ido bien guardamos los cambios
     await transaction.commit()
     return res.json({
       done: true,
-      msg: 'Proveedor eliminado correctamente'
+      msg: 'Factura eliminada correctamente'
     })
   } catch (error) {
     await transaction.rollback()
     let errorName = 'request'
-    let errors = {...getErrorFormat(errorName, 'Error al eliminar proveedor', errorName) }
+    let errors = {...getErrorFormat(errorName, 'Error al eliminar factura', errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }

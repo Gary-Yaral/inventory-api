@@ -8,7 +8,7 @@ function findId(model) {
       }
       const found = await model.findByPk(req.params.id)
       if(!found) {
-        return res.json({ error: true, msg: 'No existe el registro que desea actualizar' })
+        return res.json({ error: true, msg: 'No existe el registro con ese id' })
       }
       req.found = found
       next()

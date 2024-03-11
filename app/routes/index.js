@@ -9,6 +9,7 @@ const routes = {
   'user': 'users',
   'auth': 'auth',
   'provider': 'providers',
+  'invoice': 'invoices',
   'status': 'statuses'
 }
 
