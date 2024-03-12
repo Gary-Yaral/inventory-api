@@ -1,0 +1,16 @@
+const inventoryController = require('../controllers/inventoryController')
+const { validateToken } = require('../middlewares/auth')
+const { findId } = require('../middlewares/findId')
+const Invoice = require('../models/invoiceModel')
+const Provider = require('../models/providerModel')
+const { providerInvoice } = require('../validators/invoiceValidator')
+const router = require('express').Router()
+router.get('/invoices/:id', validateToken, findId(Provider), inventoryController.findInvoices)
+router.get('/', validateToken, inventoryController.paginate)
+router.get('/all', validateToken, inventoryController.getAll)
+router.post('/filter', validateToken, inventoryController.paginateAndFilter)
+router.post('/', validateToken, providerInvoice , inventoryController.add)
+router.put('/:id', validateToken, findId(Invoice), providerInvoice , inventoryController.update)
+router.delete('/:id', validateToken, findId(Invoice), inventoryController.remove)
+
+module.exports = { router }

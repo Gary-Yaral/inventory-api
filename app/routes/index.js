@@ -10,6 +10,7 @@ const routes = {
   'auth': 'auth',
   'provider': 'providers',
   'invoice': 'invoices',
+  'inventory': 'inventory',
   'status': 'statuses'
 }
 
