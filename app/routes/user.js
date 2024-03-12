@@ -9,6 +9,7 @@ router.get('/', validateToken, userController.paginate)
 router.post('/filter', validateToken, userController.paginateAndFilter)
 router.put('/password', validatorPasswordReset, userController.resetPassword)
 router.post('/', validateToken, userValidator, userController.add)
+router.get('/find', validateToken, userController.findOne)
 router.put('/:id', validateToken, findId(User), userValidator, userController.update)
 router.delete('/:id', validateToken, userController.remove)
 

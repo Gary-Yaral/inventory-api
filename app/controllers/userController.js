@@ -6,6 +6,7 @@ const UserStatus = require('../models/userStatusModel')
 const { generateHash } = require('../utils/bcrypt')
 const { getErrorFormat } = require('../utils/errorsFormat')
 const { createToken, OPTIONS_TOKEN } = require('../utils/jwt')
+const { ROLES_TYPE } = require('../constants')
 
 async function getAuth(req, res) {
   try {
@@ -73,9 +74,11 @@ async function paginate(req, res) {
     let { perPage, currentPage } = req.query
     let users = await User.findAndCountAll({
       include: [Role, UserStatus],
+      attributes: {exclude: ['password']},
       raw: true,
       where: {
-        id: { [Op.ne]: id }
+        id: { [Op.ne]: id },
+        '$Role.id$': {[Op.ne]: ROLES_TYPE.ADMIN}
       },
       limit: parseInt(perPage),
       offset: (parseInt(currentPage) - 1) * parseInt(perPage)
@@ -101,8 +104,10 @@ async function paginateAndFilter(req, res) {
     let users = await User.findAndCountAll({
       include: [Role, UserStatus],
       raw: true,
+      attributes: {exclude: ['password']},
       where: { 
-        id: { [Op.ne]: id},      
+        id: { [Op.ne]: id},
+        '$Role.id$': {[Op.ne]: ROLES_TYPE.ADMIN},     
         [Op.or]: [
           { name: { [Op.like]: `%${filter}%` } },
           { lastname: { [Op.like]: `%${filter}%` } },
@@ -222,6 +227,19 @@ async function remove(req, res) {
   }
 }
 
+async function findOne(req, res) {
+  try {
+    const found = await User.findOne({attributes: {exclude: ['password']}, where: {id: req.user.data.id}})
+    return res.json({data: found})
+  } catch(error) {
+    console.log(error)
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
 
 module.exports = {
   add,
@@ -229,6 +247,7 @@ module.exports = {
   remove,
   getAuth,
   paginate,
+  findOne,
   refreshtoken,
   paginateAndFilter,
   resetPassword

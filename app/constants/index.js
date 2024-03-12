@@ -3,6 +3,12 @@ const USER_STATUS = {
   BLOQUEADO: 2
 }
 
+const ROLES_TYPE = {
+  ADMIN: 1,
+  USER: 2
+}
+
 module.exports = {
-  USER_STATUS
+  USER_STATUS,
+  ROLES_TYPE
 }

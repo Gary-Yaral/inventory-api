@@ -13,6 +13,9 @@ app.use(cors({
 app.use(express.json())
 app.use('/api/images', express.static(path.join(__dirname, 'app' ,'images')))
 app.use('/api', routes.router)
+app.get('/', (req, res) => {
+  return res.json({message: 'Hello world'})
+})
 // Middleware para servir archivos estáticos desde la carpeta 'imagenes'
 
 sequelize.sync()
