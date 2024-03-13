@@ -1,14 +1,13 @@
 const sequelize = require('../database/config')
 const { Op } = require('sequelize')
-
 const { getErrorFormat } = require('../utils/errorsFormat')
-const Provider = require('../models/providerModel')
+const Category = require('../models/categoryModel')
 
 async function getAll(req, res) {
   try {
-    let providers = await Provider.findAll()
+    let categories = await Category.findAll()
     res.json({
-      data: providers
+      data: categories
     })
   } catch(error) {
     console.log(error)
@@ -22,12 +21,12 @@ async function getAll(req, res) {
 async function paginate(req, res) {
   try {
     let { perPage, currentPage } = req.query
-    let providers = await Provider.findAndCountAll({
+    let categories = await Category.findAndCountAll({
       limit: parseInt(perPage),
       offset: (parseInt(currentPage) - 1) * parseInt(perPage)
     })
     res.json({
-      data: providers
+      data: categories
     })
   } catch(error) {
     console.log(error)
@@ -43,21 +42,13 @@ async function paginateAndFilter(req, res) {
     let { filter, perPage, currentPage } = req.body
     perPage = parseInt(perPage)
     currentPage = parseInt(currentPage)
-    let providers = await Provider.findAndCountAll({
-      where: { 
-        [Op.or]: [
-          { ruc: { [Op.like]: `%${filter}%` } },
-          { name: { [Op.like]: `%${filter}%` } },
-          { telephone: { [Op.like]: `%${filter}%` } },
-          { address: { [Op.like]: `%${filter}%` } },
-          { email: { [Op.like]: `%${filter}%` } }
-        ]
-      },
+    let categories = await Category.findAndCountAll({
+      where: { name: { [Op.like]: `%${filter}%` } },
       limit: perPage,
       offset: (currentPage - 1) * perPage
 
     })
-    res.json({ data: providers })
+    res.json({ data: categories })
   } catch(error) {
     console.log(error)
     let errorName = 'request'
@@ -71,17 +62,17 @@ async function paginateAndFilter(req, res) {
 async function add(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    await Provider.create(req.body, {transaction})
+    await Category.create(req.body, {transaction})
     // Guardamos los cambios
     await transaction.commit() 
     return res.json({
       done: true,
-      msg: 'Proveedor registrado correctamente'
+      msg: 'Categoría registrada correctamente'
     })
   } catch (error) {
     await transaction.rollback()
     let errorName = 'request'
-    let errors = {...getErrorFormat(errorName, 'Error al crear proveedor', errorName) }
+    let errors = {...getErrorFormat(errorName, 'Error al crear categoría', errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }
@@ -90,18 +81,18 @@ async function add(req, res) {
 async function update(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    await Provider.update(req.body, {where: {id: req.found.id}}, {transaction})
+    await Category.update(req.body, {where: {id: req.found.id}}, {transaction})
     // Si todo ha ido bien guardamos los cambios
     await transaction.commit()
     return res.json({
       done: true,
-      msg: 'Proveedor actualizado correctamente'
+      msg: 'Categoría actualizada correctamente'
     })
   } catch (error) {
     console.log(error)
     await transaction.rollback()
     let errorName = 'request'
-    let errors = {...getErrorFormat(errorName, 'Error al actualizar proveedor', errorName) }
+    let errors = {...getErrorFormat(errorName, 'Error al actualizar categoría', errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }
@@ -110,22 +101,17 @@ async function update(req, res) {
 async function remove(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    await Provider.destroy({ where: { id: req.params.id }, transaction})
+    await Category.destroy({ where: { id: req.params.id }, transaction})
     // Si todo ha ido bien guardamos los cambios
     await transaction.commit()
     return res.json({
       done: true,
-      msg: 'Proveedor eliminado correctamente'
+      msg: 'Categoría eliminada correctamente'
     })
   } catch (error) {
     await transaction.rollback()
-    if(error.original) {
-      if(error.original.errno === 1451) {
-        return res.json({error: true, msg: 'No es posible eliminar este proveedor porque tiene facturas vinculadas'})
-      }
-    }
     let errorName = 'request'
-    let errors = {...getErrorFormat(errorName, 'Error al eliminar proveedor', errorName) }
+    let errors = {...getErrorFormat(errorName, 'Error al eliminar categoría', errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }

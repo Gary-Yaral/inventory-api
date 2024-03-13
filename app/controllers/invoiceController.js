@@ -19,6 +19,22 @@ async function getAll(req, res) {
   }
 }
 
+async function getByProvider(req, res) {
+  try {
+    let { id } = req.params
+    let invoices = await Invoice.findAll({where: {providerId: id}})
+    res.json({
+      data: invoices
+    })
+  } catch(error) {
+    console.log(error)
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
 async function paginate(req, res) {
   try {
     let { perPage, currentPage } = req.query
@@ -137,5 +153,6 @@ module.exports = {
   remove,
   paginate,
   getAll,
+  getByProvider,
   paginateAndFilter
 }
