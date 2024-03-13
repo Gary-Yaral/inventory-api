@@ -89,14 +89,17 @@ async function paginateAndFilter(req, res) {
 
 async function add(req, res) {
   const transaction = await sequelize.transaction()
-  try {
-    await Invoice.create(req.body, {transaction})
-    // Guardamos los cambios
-    await transaction.commit() 
+  try { 
+    // Guardamos los datos del item
+    delete req.body.image
+    delete req.body.imgDamaged
+
     return res.json({
       done: true,
-      msg: 'Factura registrado correctamente'
+      data: req.files,
+      form: req.body
     })
+    
   } catch (error) {
     console.log(error)
     await transaction.rollback()
