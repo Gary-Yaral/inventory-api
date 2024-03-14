@@ -2,9 +2,9 @@ const fs = require('fs')
 const path = require('path')
 
 
-function deteleImage(imageName) {
+function deleteImage(imageName) {
   try {
-    const folderPath = __dirname + '/../images/'
+    const folderPath = __dirname + '/../uploads/'
     const pathFile = path.join(folderPath, imageName)
     // Verificar si el archivo existe antes de intentar eliminarlo
     if (fs.existsSync(pathFile)) {
@@ -34,6 +34,17 @@ function deteleImage(imageName) {
   }
 }
 
+function deleteImagesGroup(imgNames) {
+  for(let img of imgNames) {
+    let hasError = deleteImage(img.filename)
+    if(hasError) {
+      false
+    }
+  }
+  return true
+}
+
 module.exports = { 
-  deteleImage
+  deleteImage,
+  deleteImagesGroup
 }

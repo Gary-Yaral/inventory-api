@@ -16,6 +16,100 @@ CREATE DATABASE /*!32312 IF NOT EXISTS*/`inventory` /*!40100 DEFAULT CHARACTER S
 
 USE `inventory`;
 
+/*Table structure for table `category` */
+
+DROP TABLE IF EXISTS `category`;
+
+CREATE TABLE `category` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`),
+  UNIQUE KEY `name_2` (`name`),
+  UNIQUE KEY `name_3` (`name`),
+  UNIQUE KEY `name_4` (`name`),
+  UNIQUE KEY `name_5` (`name`),
+  UNIQUE KEY `name_6` (`name`),
+  UNIQUE KEY `name_7` (`name`),
+  UNIQUE KEY `name_8` (`name`),
+  UNIQUE KEY `name_9` (`name`),
+  UNIQUE KEY `name_10` (`name`),
+  UNIQUE KEY `name_11` (`name`),
+  UNIQUE KEY `name_12` (`name`),
+  UNIQUE KEY `name_13` (`name`),
+  UNIQUE KEY `name_14` (`name`),
+  UNIQUE KEY `name_15` (`name`),
+  UNIQUE KEY `name_16` (`name`),
+  UNIQUE KEY `name_17` (`name`),
+  UNIQUE KEY `name_18` (`name`),
+  UNIQUE KEY `name_19` (`name`),
+  UNIQUE KEY `name_20` (`name`),
+  UNIQUE KEY `name_21` (`name`),
+  UNIQUE KEY `name_22` (`name`),
+  UNIQUE KEY `name_23` (`name`),
+  UNIQUE KEY `name_24` (`name`),
+  UNIQUE KEY `name_25` (`name`),
+  UNIQUE KEY `name_26` (`name`),
+  UNIQUE KEY `name_27` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `category` */
+
+insert  into `category`(`id`,`name`) values (4,'LAMPARAS'),(1,'MARTILLOS');
+
+/*Table structure for table `damaged_images` */
+
+DROP TABLE IF EXISTS `damaged_images`;
+
+CREATE TABLE `damaged_images` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `inventoryId` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `inventoryId` (`inventoryId`),
+  CONSTRAINT `damaged_images_ibfk_1` FOREIGN KEY (`inventoryId`) REFERENCES `inventory` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `damaged_images` */
+
+/*Table structure for table `images` */
+
+DROP TABLE IF EXISTS `images`;
+
+CREATE TABLE `images` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `inventoryId` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `inventoryId` (`inventoryId`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `images` */
+
+/*Table structure for table `inventory` */
+
+DROP TABLE IF EXISTS `inventory`;
+
+CREATE TABLE `inventory` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `price` double NOT NULL,
+  `quantity` double NOT NULL,
+  `damaged` double NOT NULL,
+  `description` varchar(500) DEFAULT NULL,
+  `invoiceId` int(11) NOT NULL,
+  `categoryId` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `invoiceId` (`invoiceId`),
+  KEY `categoryId` (`categoryId`),
+  CONSTRAINT `inventory_ibfk_1` FOREIGN KEY (`invoiceId`) REFERENCES `invoice` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `inventory_ibfk_2` FOREIGN KEY (`categoryId`) REFERENCES `category` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `inventory` */
+
+insert  into `inventory`(`id`,`name`,`price`,`quantity`,`damaged`,`description`,`invoiceId`,`categoryId`) values (8,'Martillo decker',0,15,15,'NaN',11,1);
+
 /*Table structure for table `invoice` */
 
 DROP TABLE IF EXISTS `invoice`;
@@ -27,13 +121,13 @@ CREATE TABLE `invoice` (
   `observation` varchar(255) NOT NULL,
   `providerId` int(11) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `providerId` (`providerId`),
-  CONSTRAINT `invoice_ibfk_1` FOREIGN KEY (`providerId`) REFERENCES `provider` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  KEY `invoice_ibfk_1` (`providerId`),
+  CONSTRAINT `invoice_ibfk_1` FOREIGN KEY (`providerId`) REFERENCES `provider` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 /*Data for the table `invoice` */
 
-insert  into `invoice`(`id`,`code`,`date`,`observation`,`providerId`) values (4,'FACT-001','2024-03-14 00:00:00','No',1),(5,'FACT-002','2024-03-11 00:00:00','no',1),(6,'FACT-003','2024-03-20 00:00:00','gsg',1);
+insert  into `invoice`(`id`,`code`,`date`,`observation`,`providerId`) values (11,'FACT-001','2024-03-13 00:00:00','No',5);
 
 /*Table structure for table `provider` */
 
@@ -47,11 +141,11 @@ CREATE TABLE `provider` (
   `telephone` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 /*Data for the table `provider` */
 
-insert  into `provider`(`id`,`name`,`ruc`,`address`,`telephone`,`email`) values (1,'ALMACENES GONZALES','1202353536001','STO. DOMINGO','0623523531','almacenesgonzales@gmail.com'),(3,'ORVE HOGAR','1790085783001','AVENIDA DE LAS AMERICAS','0923523466','dgsdgsg@gmail.com'),(4,'COMPUTRON','1790084782001','MEJIA Y ROLDOS AGUILERA','0935523522','miguelangel@gmail.com');
+insert  into `provider`(`id`,`name`,`ruc`,`address`,`telephone`,`email`) values (5,'COMPUTRON','1790085783001','MEJIA Y ROLDOS AGUILERA','0935523522','miguelangel@gmail.com');
 
 /*Table structure for table `role` */
 
@@ -142,7 +236,7 @@ CREATE TABLE `user` (
 
 /*Data for the table `user` */
 
-insert  into `user`(`id`,`name`,`lastname`,`username`,`password`,`roleId`,`statusId`) values (1,'GUSTAVO ARMANDO','LOPEZ MOREIRA','Miusuario_2024','$2b$10$aklR7L959T9.QXcafA9mZu9SVpB.B0BN4AhsjIESoLWOywu8ZxkZW',1,1),(2,'PEDRO ANDRES','MURILLO GONZALES','Pedro_2025','$2b$10$MEsLipFCd3Dk38oOEtL1jO3hFvtBTp70IKskzJg1aMt1fEJda1ZiC',2,2),(4,'SDSDG','DGDSG','Julio_2024','$2b$10$6MXA.w/AONet9jDiolg2bOsuUTPkq7q8UQZB1Y/79LcFFzOn/Chie',2,1),(5,'DSDSG','DSG','Miusuario_2026','$2b$10$1Zcpb5vKbQmEVFZS8c11huIBtUfZPRASSbgu2lxPYmTValTgCF30O',2,1),(6,'DGDSG','DSG','Usuario_20','$2b$10$UcjwbclGAwuNsMkkHTNZiuGwnQJiZuB7ou9ut.jSIXyKcj26inEae',2,1),(7,'FDSFDF','FDSF','Usuario_202','$2b$10$6luHb82noHGx7avQ6stzmuCJgtoCX3vUGmQFtqqt5H8yLWAVooXda',2,1);
+insert  into `user`(`id`,`name`,`lastname`,`username`,`password`,`roleId`,`statusId`) values (1,'GUSTAVO ARMANDO','LOPEZ MOREIRA','Miusuario_2024','$2b$10$QJz3kiGbrEeO5LRViqmjlerXSOk/cp283E5iwLK4yiJ4dGpZ9IWEe',1,1),(2,'PEDRO ANDRES','MURILLO GONZALES','Pedro_2025','$2b$10$MEsLipFCd3Dk38oOEtL1jO3hFvtBTp70IKskzJg1aMt1fEJda1ZiC',2,1),(4,'SDSDG','DGDSG','Julio_2024','$2b$10$6MXA.w/AONet9jDiolg2bOsuUTPkq7q8UQZB1Y/79LcFFzOn/Chie',2,2),(5,'DSDSG','DSG','Miusuario_2026','$2b$10$1Zcpb5vKbQmEVFZS8c11huIBtUfZPRASSbgu2lxPYmTValTgCF30O',2,1);
 
 /*Table structure for table `user_status` */
 

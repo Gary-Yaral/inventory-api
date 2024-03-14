@@ -23,6 +23,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage })
 router.get('/invoices/:id', validateToken, findId(Provider), inventoryController.findInvoices)
-router.post('/', validateToken, upload.fields([{ name: 'images' }, { name: 'damaged' }]), inventoryController.add)
+router.post('/', validateToken, upload.fields([{ name: 'images' }, { name: 'imgDamaged' }]), inventoryController.add)
 
 module.exports = { router }

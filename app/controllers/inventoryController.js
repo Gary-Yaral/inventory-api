@@ -3,6 +3,10 @@ const { Op } = require('sequelize')
 const { getErrorFormat } = require('../utils/errorsFormat')
 const Provider = require('../models/providerModel')
 const Invoice = require('../models/invoiceModel')
+const Inventory = require('../models/InventoryModel')
+const { deleteImagesGroup } = require('../utils/deleteFile')
+const Image = require('../models/imageModel')
+const DamagedImage = require('../models/damagedImageModel')
 
 async function findInvoices(req, res) {
   try {
@@ -86,25 +90,101 @@ async function paginateAndFilter(req, res) {
   }
 }
 
+function imagesWereDeleted(req) {
+  if(req.files.images) {
+    if(Array.isArray(req.files.images)) {
+      if(deleteImagesGroup(req.files.images)){
+        return {
+          error: true,
+          msg: `Error al guardar el item: ${req.body.name}. Item no se guardó, imagenes no pudieron no pudieron ser eliminadas`
+        }
+      }
+    }
+  }
+  if(req.files.imgDamaged) {
+    if(Array.isArray(req.files.imgDamaged)) {
+      if(deleteImagesGroup(req.files.imgDamaged)){
+        return {
+          error: true,
+          msg: `Error al guardar el item: ${req.body.name}. Item no se guardó, imagenes de daños no pudieron no pudieron ser eliminadas`
+        }
+      }
+    }
+  }
+}
+
+async function saveImagesInDB(req, inventoryId, transaction) {
+
+  if(req.files.images) {
+    if(Array.isArray(req.files.images)) {
+      // IMAGENES DEL ITEM
+      for(let img of req.files.images) {
+        if(!(await Image.create({name: img.filename, inventoryId}, {transaction}))) {
+          transaction.rollback()
+          return {
+            error: true,
+            msg: `Item ${req.body.name} no se guardó. Error al guardar path de imagenes de item`
+          } 
+        }
+      }
+    }
+  }
+  if(req.files.imgDamaged) {
+    if(Array.isArray(req.files.imgDamaged)) {
+      // IMAGENES DE LOS DAÑOS
+      for(let img of req.files.imgDamaged) {
+        if(!(await DamagedImage.create({name: img.filename, inventoryId}, {transaction}))) {
+          transaction.rollback()
+          return {
+            error: true,
+            msg: `Item ${req.body.name} no se guardó. Error al guardar path de imagenes de daños`
+          } 
+        }
+      }
+    }
+  }
+}
 
 async function add(req, res) {
   const transaction = await sequelize.transaction()
   try { 
-    // Guardamos los datos del item
+    // Eliminamos las propiedades que generan la imagenes
     delete req.body.image
-    delete req.body.imgDamaged
-
+    // Guardamos los datos del item
+    const created = await Inventory.create(req.body, {transaction})
+    // Si no se cró entonces eliminamos las imagenes que se guardaron y retornamos error
+    if(!created) {
+      transaction.rollback()
+      const wereDeleted = imagesWereDeleted(req)
+      if(wereDeleted) {
+        return wereDeleted 
+      } else {
+        return {
+          error: true,
+          msg: `Item: ${req.body.name} no se guardó`
+        }
+      }
+    } 
+    // Intentamos guardar la imagenes
+    let imagesWereSaved = await saveImagesInDB(req, created.id, transaction)
+    // Si retornar algo es porque hay error y lo retornamos en la respuesta de la peticion
+    if(imagesWereSaved) {
+      return res.json(imagesWereSaved)
+    }
+    // Si todo ha ido bien guardamso los cambios en la BD
+    transaction.commit()
     return res.json({
       done: true,
-      data: req.files,
-      form: req.body
+      msg: `Item ${req.body.name} fue guardado correctamente`
     })
     
   } catch (error) {
     console.log(error)
     await transaction.rollback()
+    let hasBeenError = imagesWereDeleted(req)
+    if(hasBeenError) { return res.json(hasBeenError)}
     let errorName = 'request'
-    let errors = {...getErrorFormat(errorName, 'Error al crear factura', errorName) }
+    let errors = {...getErrorFormat(errorName, `Item ${req.body.name} no se guardó`, errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }
