@@ -15,7 +15,7 @@ const Inventory = db.define(
       allowNull: false
     },
     description: {
-      type: Sequelize.DOUBLE,
+      type: Sequelize.STRING,
       allowNull: false
     },
     quantity: {
@@ -41,14 +41,7 @@ const Inventory = db.define(
         model: Category,
         key: 'id'
       }
-    },
-    username: {
-      type: Sequelize.STRING,
-      unique: true
-    },
-    password: {
-      type: Sequelize.STRING, 
-    },
+    }
   },
   { 
     tableName: 'inventory',

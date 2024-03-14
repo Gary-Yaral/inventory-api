@@ -11,7 +11,7 @@ app.use(cors({
   origin: '*'
 }))
 app.use(express.json())
-app.use('/api/images', express.static(path.join(__dirname, 'app' ,'images')))
+app.use('/api/uploads', express.static(path.join(__dirname, 'app' ,'uploads')))
 app.use('/api', routes.router)
 app.get('/', (req, res) => {
   return res.json({message: 'Hello world'})

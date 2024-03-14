@@ -37,9 +37,7 @@ function deleteImage(imageName) {
 function deleteImagesGroup(imgNames) {
   for(let img of imgNames) {
     let hasError = deleteImage(img.filename)
-    if(hasError) {
-      false
-    }
+    if(hasError) { return false }
   }
   return true
 }

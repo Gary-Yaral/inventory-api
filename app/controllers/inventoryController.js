@@ -7,6 +7,7 @@ const Inventory = require('../models/InventoryModel')
 const { deleteImagesGroup } = require('../utils/deleteFile')
 const Image = require('../models/imageModel')
 const DamagedImage = require('../models/damagedImageModel')
+const Category = require('../models/categoryModel')
 
 async function findInvoices(req, res) {
   try {
@@ -42,8 +43,15 @@ async function getAll(req, res) {
 async function paginate(req, res) {
   try {
     let { perPage, currentPage } = req.query
-    let invoices = await Invoice.findAndCountAll({
-      include: [Provider],
+    let invoices = await Inventory.findAndCountAll({
+      include: [ 
+        {
+          model: Invoice,
+          attributes:['id', 'code'],
+          include: [{ model: Provider, attributes: ['id', 'name'] }]
+        }, 
+        Category
+      ],
       raw: true,
       limit: parseInt(perPage),
       offset: (parseInt(currentPage) - 1) * parseInt(perPage)
@@ -65,22 +73,32 @@ async function paginateAndFilter(req, res) {
     let { filter, perPage, currentPage } = req.body
     perPage = parseInt(perPage)
     currentPage = parseInt(currentPage)
-    let invoices = await Invoice.findAndCountAll({
-      include: [Provider],
-      where: { 
-        [Op.or]: [
-          { code: { [Op.like]: `%${filter}%` } },
-          { date: { [Op.like]: `%${filter}%` } },
-          { observation: { [Op.like]: `%${filter}%` } },
-          { '$Provider.name$': { [Op.like]: `%${filter}%` } }
-        ]
-      },
+    let inventors = await Inventory.findAndCountAll({
+      include: [ 
+        {
+          model: Invoice,
+          attributes:['id', 'code'],
+          include: [{ model: Provider, attributes: ['id', 'name'] }]
+        }, 
+        Category
+      ],
       raw: true,
       limit: perPage,
-      offset: (currentPage - 1) * perPage
-
+      offset: (currentPage - 1) * perPage,
+      where: { 
+        [Op.or]: [
+          { name: { [Op.like]: `%${filter}%` } },
+          { price: { [Op.like]: `%${filter}%` } },
+          { quantity: { [Op.eq]: filter } },
+          { damaged: { [Op.eq]: filter } },
+          { description: { [Op.like]: `%${filter}%` } },
+          { '$Invoice.code$': { [Op.like]: `%${filter}%` } },
+          { '$Invoice.Provider.name$': { [Op.like]: `%${filter}%` } },
+          { '$Category.name$': { [Op.like]: `%${filter}%` } }
+        ]
+      }
     })
-    res.json({ data: invoices })
+    res.json({ data: inventors })
   } catch(error) {
     console.log(error)
     let errorName = 'request'
@@ -93,20 +111,20 @@ async function paginateAndFilter(req, res) {
 function imagesWereDeleted(req) {
   if(req.files.images) {
     if(Array.isArray(req.files.images)) {
-      if(deleteImagesGroup(req.files.images)){
+      if(!deleteImagesGroup(req.files.images)){
         return {
           error: true,
-          msg: `Error al guardar el item: ${req.body.name}. Item no se guardó, imagenes no pudieron no pudieron ser eliminadas`
+          msg: `Error al procesar el item: ${req.body.name}, proceso falló y las imagenes no pudieron no pudieron ser eliminadas`
         }
       }
     }
   }
   if(req.files.imgDamaged) {
     if(Array.isArray(req.files.imgDamaged)) {
-      if(deleteImagesGroup(req.files.imgDamaged)){
+      if(!deleteImagesGroup(req.files.imgDamaged)){
         return {
           error: true,
-          msg: `Error al guardar el item: ${req.body.name}. Item no se guardó, imagenes de daños no pudieron no pudieron ser eliminadas`
+          msg: `Error al procesar el item: ${req.body.name}. proceso falló y las imagenes de daños no pudieron no pudieron ser eliminadas`
         }
       }
     }
@@ -114,7 +132,6 @@ function imagesWereDeleted(req) {
 }
 
 async function saveImagesInDB(req, inventoryId, transaction) {
-
   if(req.files.images) {
     if(Array.isArray(req.files.images)) {
       // IMAGENES DEL ITEM
@@ -155,21 +172,21 @@ async function add(req, res) {
     // Si no se cró entonces eliminamos las imagenes que se guardaron y retornamos error
     if(!created) {
       transaction.rollback()
-      const wereDeleted = imagesWereDeleted(req)
-      if(wereDeleted) {
-        return wereDeleted 
+      const hasBeenError = imagesWereDeleted(req)
+      if(hasBeenError) {
+        return res.json(hasBeenError) 
       } else {
-        return {
+        return res.json({
           error: true,
           msg: `Item: ${req.body.name} no se guardó`
-        }
+        })
       }
     } 
     // Intentamos guardar la imagenes
-    let imagesWereSaved = await saveImagesInDB(req, created.id, transaction)
+    let hasBeenErrorToSave = await saveImagesInDB(req, created.id, transaction)
     // Si retornar algo es porque hay error y lo retornamos en la respuesta de la peticion
-    if(imagesWereSaved) {
-      return res.json(imagesWereSaved)
+    if(hasBeenErrorToSave) {
+      return res.json(hasBeenErrorToSave)
     }
     // Si todo ha ido bien guardamso los cambios en la BD
     transaction.commit()
@@ -213,17 +230,44 @@ async function update(req, res) {
 async function remove(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    await Invoice.destroy({ where: { id: req.params.id }, transaction})
+    req.files = {
+      images: (await Image.findAll({where: {inventoryId: req.params.id}})).map((img) => {return {filename: img.name}}),
+      imgDamaged: (await DamagedImage.findAll({where: {inventoryId: req.params.id}})).map((img) => {return {filename: img.name}})
+    }
+    await Inventory.destroy({ where: { id: req.params.id }, transaction})
+    // eliminamos las imagenes
+    const hasErrorToDeleteImg = imagesWereDeleted(req)
+    if(hasErrorToDeleteImg) {
+      transaction.rollback()
+      return res.json(hasErrorToDeleteImg) 
+    } 
     // Si todo ha ido bien guardamos los cambios
     await transaction.commit()
     return res.json({
       done: true,
-      msg: 'Factura eliminada correctamente'
+      msg: `El Item ${req.found.name} ha sido eliminado correctamente`
     })
   } catch (error) {
+    console.log(error)
     await transaction.rollback()
     let errorName = 'request'
-    let errors = {...getErrorFormat(errorName, 'Error al eliminar factura', errorName) }
+    let errors = {...getErrorFormat(errorName, 'Error al eliminar item del inventario', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
+async function getImages(req, res) {
+  try {
+    const data = {
+      images: (await Image.findAll({where: {inventoryId: req.params.id}})).map((img) => img.name),
+      imgDamaged: (await DamagedImage.findAll({where: {inventoryId: req.params.id}})).map((img) => img.name)
+    }
+    return res.json({ data })
+  } catch (error) {
+    console.log(error)
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar las imagenes del item del inventario', errorName) }
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }
@@ -236,6 +280,7 @@ module.exports = {
   remove,
   paginate,
   getAll,
+  getImages,
   findInvoices,
   paginateAndFilter
 }
