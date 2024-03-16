@@ -27,4 +27,5 @@ router.post('/', validateToken, upload.fields([{ name: 'images' }, { name: 'imgD
 router.get('/', validateToken, inventoryController.paginate)
 router.post('/filter', validateToken, inventoryController.paginateAndFilter)
 router.delete('/:id', validateToken, findId(Inventory), inventoryController.remove)
+router.put('/:id', validateToken, findId(Inventory), upload.fields([{ name: 'images' }, { name: 'imgDamaged' }]), inventoryController.update)
 module.exports = { router }

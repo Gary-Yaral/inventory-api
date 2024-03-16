@@ -1,5 +1,5 @@
 const sequelize = require('../database/config')
-const { Op } = require('sequelize')
+const { Op, json } = require('sequelize')
 const { getErrorFormat } = require('../utils/errorsFormat')
 const Provider = require('../models/providerModel')
 const Invoice = require('../models/invoiceModel')
@@ -140,7 +140,7 @@ async function saveImagesInDB(req, inventoryId, transaction) {
           transaction.rollback()
           return {
             error: true,
-            msg: `Item ${req.body.name} no se guardó. Error al guardar path de imagenes de item`
+            msg: `Error en item ${req.body.name}. Error al guardar path de imagenes de item`
           } 
         }
       }
@@ -154,7 +154,7 @@ async function saveImagesInDB(req, inventoryId, transaction) {
           transaction.rollback()
           return {
             error: true,
-            msg: `Item ${req.body.name} no se guardó. Error al guardar path de imagenes de daños`
+            msg: `Error en item ${req.body.name}. Error al guardar path de imagenes de daños`
           } 
         }
       }
@@ -210,12 +210,86 @@ async function add(req, res) {
 async function update(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    await Invoice.update(req.body, {where: {id: req.found.id}}, {transaction})
+    //await Inventory.update(req.body, {where: {id: req.found.id}}, {transaction})
+    // Verificamos si envio imagens nuevas del item
+    let filesCopy = {...req.files}
+    if(req.files) {
+      if(req.files.images) {
+        // Obtengo los nombres de la imagenes guardadas
+        req.files.images = (await Image.findAll({where: {inventoryId: req.params.id}})).map((img) => ({filename: img.name}))
+        // Elimino las imagenes que tenia previamente
+        const affected = await Image.destroy({where: {inventoryId: req.params.id}},{transaction})
+        if(affected > 0) {
+          // Elimino las images de la carpeta de uploads
+          let hasBeenError = imagesWereDeleted(req)
+          if(hasBeenError) {
+            return res.json(hasBeenError)
+          } else {
+            req.files.images = filesCopy.images
+            let errors = await saveImagesInDB(req, req.params.id, transaction) 
+            // Eliminamos la propiedad images de la request
+            delete req.files.images
+            if(errors) {
+              return res.json(errors)
+            }
+          }
+        } else {
+          transaction.rollback()
+          return res.json({
+            error: true,
+            msg:'Item no se ha actualizado. Imagenes del item no pudieron ser actualizadas'
+          })
+        }
+      }
+      
+      if(parseInt(req.body.damaged) === 0) {
+        // Obtengo los nombres de la imagenes guardadas
+        req.files.imgDamaged = (await DamagedImage.findAll({where: {inventoryId: req.params.id}})).map((img) => ({filename: img.name}))
+        // Elimino las imagenes que tenia previamente
+        let deleted = await DamagedImage.destroy({where: {inventoryId: req.params.id}},{transaction})
+        if(deleted > 0) {
+          // Elimino las images de la carpeta de uploads
+          let hasBeenError = imagesWereDeleted(req)
+          if(hasBeenError) {
+            transaction.rollback()
+            return res.json(hasBeenError)
+          } 
+        }
+      }
+
+      if(parseInt(req.body.damaged) > 0  && req.files.imgDamaged) {
+        // Obtengo los nombres de la imagenes guardadas
+        req.files.imgDamaged = (await DamagedImage.findAll({where: {inventoryId: req.params.id}})).map((img) => ({filename: img.name}))
+        // Verifico si hay imagenes guardadas sino no hago nada
+        if(req.files.imgDamaged.length > 0) {
+          // Elimino las imagenes que tenia previamente
+          const affected = await DamagedImage.destroy({where: {inventoryId: req.params.id}},{transaction})
+          if(affected > 0) {
+            // Elimino las images de la carpeta de uploads
+            let hasBeenError = imagesWereDeleted(req)
+            if(hasBeenError) {
+              transaction.rollback()
+              return res.json(hasBeenError)
+            }
+          }
+        }
+        // Guardamos la nuevas images de daños
+        req.files.imgDamaged = filesCopy.imgDamaged
+        let errors = await saveImagesInDB(req, req.params.id, transaction) 
+        if(errors) {
+          transaction.rollback()
+          return res.json({
+            error: true,
+            msg:'Item no se ha actualizado. Imagenes de daños item no pudieron ser actualizadas'
+          })
+        }
+      }
+    }
     // Si todo ha ido bien guardamos los cambios
     await transaction.commit()
     return res.json({
       done: true,
-      msg: 'Factura actualizado correctamente'
+      msg: 'Item actualizado correctamente'
     })
   } catch (error) {
     console.log(error)
@@ -260,6 +334,21 @@ async function remove(req, res) {
 async function getImages(req, res) {
   try {
     const data = {
+      inventory: (await Inventory.findOne({
+        where:{id: req.params.id},
+        include:[{
+          model: Invoice, 
+          attributes: ['code'],
+          include: [{
+            model:Provider,
+            attributes: ['name']
+          }]
+        }, {
+          model: Category,
+          attributes: ['name']
+        }],
+        raw: true
+      })),
       images: (await Image.findAll({where: {inventoryId: req.params.id}})).map((img) => img.name),
       imgDamaged: (await DamagedImage.findAll({where: {inventoryId: req.params.id}})).map((img) => img.name)
     }
