@@ -25,6 +25,7 @@ router.get('/invoices/:id', validateToken, findId(Provider), inventoryController
 router.get('/images/:id', validateToken, findId(Inventory), inventoryController.getImages)
 router.post('/', validateToken, upload.fields([{ name: 'images' }, { name: 'imgDamaged' }]), inventoryController.add)
 router.get('/', validateToken, inventoryController.paginate)
+router.post('/count', validateToken, inventoryController.count)
 router.post('/filter', validateToken, inventoryController.paginateAndFilter)
 router.post('/reports', validateToken, inventoryController.getByFilterReport)
 router.delete('/:id', validateToken, findId(Inventory), inventoryController.remove)

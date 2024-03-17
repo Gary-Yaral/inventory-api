@@ -26,6 +26,24 @@ async function findInvoices(req, res) {
   }
 }
 
+async function count(req, res) {
+  try {
+    let inventory = await Inventory.count()
+    res.json({
+      data: { 
+        section: 'Items',
+        rows: inventory 
+      }
+    })
+  } catch(error) {
+    console.log(error)
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
 async function getByFilterReport(req, res) {
   try {
     let {providerId, invoiceId, categoryId, date} = req.body
@@ -189,8 +207,7 @@ async function paginateAndFilter(req, res) {
       include: [ 
         {
           model: Invoice,
-          attributes:['id', 'code'],
-          include: [{ model: Provider, attributes: ['id', 'name'] }]
+          include: [{ model: Provider }]
         }, 
         Category
       ],
@@ -200,7 +217,7 @@ async function paginateAndFilter(req, res) {
       where: { 
         [Op.or]: [
           { name: { [Op.like]: `%${filter}%` } },
-          { price: { [Op.like]: `%${filter}%` } },
+          { price: { [Op.eq]: filter } },
           { quantity: { [Op.eq]: filter } },
           { damaged: { [Op.eq]: filter } },
           { description: { [Op.like]: `%${filter}%` } },
@@ -483,6 +500,7 @@ module.exports = {
   update,
   remove,
   paginate,
+  count,
   getByFilterReport,
   getImages,
   findInvoices,

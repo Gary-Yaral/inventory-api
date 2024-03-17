@@ -19,6 +19,25 @@ async function getAll(req, res) {
   }
 }
 
+async function count(req, res) {
+  try {
+    let providers = await Provider.count()
+    res.json({
+      data: { 
+        section: 'Proveedores',
+        rows: providers 
+      }
+    })
+  } catch(error) {
+    console.log(error)
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
+
 async function paginate(req, res) {
   try {
     let { perPage, currentPage } = req.query
@@ -139,5 +158,6 @@ module.exports = {
   remove,
   paginate,
   getAll,
+  count,
   paginateAndFilter
 }

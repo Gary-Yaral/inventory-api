@@ -97,6 +97,24 @@ async function update(req, res) {
   }
 }
 
+async function count(req, res) {
+  try {
+    let categories = await Category.count()
+    res.json({
+      data: { 
+        section: 'Categorías',
+        rows: categories 
+      }
+    })
+  } catch(error) {
+    console.log(error)
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
 async function remove(req, res) {
   const transaction = await sequelize.transaction()
   try {
@@ -129,5 +147,6 @@ module.exports = {
   remove,
   paginate,
   getAll,
+  count,
   paginateAndFilter
 }

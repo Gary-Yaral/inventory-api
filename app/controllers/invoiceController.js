@@ -19,6 +19,24 @@ async function getAll(req, res) {
   }
 }
 
+async function count(req, res) {
+  try {
+    let invoices = await Invoice.count()
+    res.json({
+      data: { 
+        section: 'Facturas',
+        rows: invoices 
+      }
+    })
+  } catch(error) {
+    console.log(error)
+    let errorName = 'request'
+    let errors = {...getErrorFormat(errorName, 'Error al consultar datos', errorName) }
+    let errorKeys = [errorName]
+    return res.status(400).json({ errors, errorKeys})
+  }
+}
+
 async function getByProvider(req, res) {
   try {
     let { id } = req.params
@@ -160,5 +178,6 @@ module.exports = {
   paginate,
   getAll,
   getByProvider,
+  count,
   paginateAndFilter
 }
