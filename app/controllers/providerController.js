@@ -119,10 +119,11 @@ async function remove(req, res) {
     })
   } catch (error) {
     await transaction.rollback()
-    if(error.original) {
-      if(error.original.errno === 1451) {
-        return res.json({error: true, msg: 'No es posible eliminar este proveedor porque tiene facturas vinculadas'})
-      }
+    if(error.parent && error.parent.errno === 1451) {
+      return res.json({
+        error: true,
+        msg: 'No es posible eliminar proveedor, porque hay facturas guardadas y vinculadas a este proveedor'
+      })
     }
     let errorName = 'request'
     let errors = {...getErrorFormat(errorName, 'Error al eliminar proveedor', errorName) }

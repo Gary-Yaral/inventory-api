@@ -58,7 +58,6 @@ async function paginateAndFilter(req, res) {
   }
 }
 
-
 async function add(req, res) {
   const transaction = await sequelize.transaction()
   try {
@@ -110,6 +109,12 @@ async function remove(req, res) {
     })
   } catch (error) {
     await transaction.rollback()
+    if(error.parent && error.parent.errno === 1451) {
+      return res.json({
+        error: true,
+        msg: 'No es posible eliminar categoría, porque hay items guardados y vinculados a esta categoría'
+      })
+    }
     let errorName = 'request'
     let errors = {...getErrorFormat(errorName, 'Error al eliminar categoría', errorName) }
     let errorKeys = [errorName]

@@ -139,6 +139,12 @@ async function remove(req, res) {
     })
   } catch (error) {
     await transaction.rollback()
+    if(error.parent && error.parent.errno === 1451) {
+      return res.json({
+        error: true,
+        msg: 'No es posible eliminar factura, porque hay items guardados y vinculados a esta factura'
+      })
+    }
     let errorName = 'request'
     let errors = {...getErrorFormat(errorName, 'Error al eliminar factura', errorName) }
     let errorKeys = [errorName]

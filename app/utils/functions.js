@@ -40,6 +40,41 @@ async function findRepeatedProvider(req, data) {
   }
 }
 
+function isUniqueNotEmpty(obj, key) {
+  const keys = Object.keys(obj)
+  const fulls = []
+  for(let key of keys) {
+    if(obj[key] !== '') {
+      fulls.push(key)
+    }
+  }
+  return fulls.length === 1 && fulls.includes(key)
+}
+
+function areUniquesNotEmpty(obj, arrayKeys) {
+  const keys = Object.keys(obj)
+  const fulls = []
+  for(let key of keys) {
+    if(obj[key] !== '') {
+      fulls.push(key)
+    }
+  }
+  if(fulls.length !== arrayKeys.length) {
+    return false
+  }
+  // Si tienen la misma cantidad de elementos
+  for(let key of arrayKeys) {
+    if(!fulls.includes(key)) {
+      return false
+    }
+  }
+  return true
+}
 
 
-module.exports = { findRepeatedUser, findRepeatedProvider }
+module.exports = { 
+  findRepeatedUser, 
+  findRepeatedProvider,
+  isUniqueNotEmpty,
+  areUniquesNotEmpty
+}

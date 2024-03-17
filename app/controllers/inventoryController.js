@@ -1,5 +1,5 @@
 const sequelize = require('../database/config')
-const { Op, json } = require('sequelize')
+const { Op } = require('sequelize')
 const { getErrorFormat } = require('../utils/errorsFormat')
 const Provider = require('../models/providerModel')
 const Invoice = require('../models/invoiceModel')
@@ -8,6 +8,7 @@ const { deleteImagesGroup } = require('../utils/deleteFile')
 const Image = require('../models/imageModel')
 const DamagedImage = require('../models/damagedImageModel')
 const Category = require('../models/categoryModel')
+const { isUniqueNotEmpty, areUniquesNotEmpty } = require('../utils/functions')
 
 async function findInvoices(req, res) {
   try {
@@ -25,11 +26,109 @@ async function findInvoices(req, res) {
   }
 }
 
-async function getAll(req, res) {
+async function getByFilterReport(req, res) {
   try {
-    let invoices = await Invoice.findAll()
-    res.json({
-      data: invoices
+    let {providerId, invoiceId, categoryId, date} = req.body
+    // Validamos que solos haya enviado una propiedad llena
+    if(isUniqueNotEmpty(req.body, 'providerId')) {
+      const items = await filterBy({
+        '$Invoice.Provider.id$': providerId
+      })
+      return res.json({
+        data: items,
+      })
+    }
+
+    if(isUniqueNotEmpty(req.body, 'categoryId')) {
+      const items = await filterBy({
+        '$Category.id$': categoryId
+      })
+      return res.json({
+        data: items,
+      })
+    }
+    if(isUniqueNotEmpty(req.body, 'date')) {
+      const items = await filterBy({
+        '$Invoice.date$': date
+      })
+      return res.json({
+        data: items,
+      })
+    }
+
+    // Validamos si hay enviado solo dos campos llenos 
+    if(areUniquesNotEmpty(req.body, ['providerId', 'invoiceId'])) {
+      const items = await filterBy({
+        '$Invoice.Provider.id$': providerId,
+        '$Invoice.id$': invoiceId,
+      })
+      return res.json({
+        data: items,
+      })
+    }
+
+    if(areUniquesNotEmpty(req.body, ['providerId', 'categoryId'])) {
+      const items = await filterBy({
+        '$Invoice.Provider.id$': providerId,
+        '$Category.id$': categoryId,
+      })
+      return res.json({
+        data: items
+      })
+    }
+ 
+    if(areUniquesNotEmpty(req.body, ['providerId', 'date'])) {
+      const items = await filterBy({
+        '$Invoice.Provider.id$': providerId,
+        '$Invoice.date$': date,
+      })
+      return res.json({
+        data: items
+      })
+    }
+
+    if(areUniquesNotEmpty(req.body, ['categoryId', 'date'])) {
+      const items = await filterBy({
+        '$Category.id$': categoryId,
+        '$Invoice.date$': date,
+      })
+      return res.json({
+        data: items
+      })
+    }
+
+    // Validamos si envio solo tres campos llenos
+    if(areUniquesNotEmpty(req.body, ['providerId', 'invoiceId', 'categoryId'])) {
+      const items = await filterBy({
+        '$Invoice.id$': invoiceId,
+        '$Category.id$': categoryId,
+      })
+      return res.json({
+        data: items
+      })
+    }
+    if(areUniquesNotEmpty(req.body, ['providerId', 'invoiceId', 'date'])) {
+      const items = await filterBy({
+        '$Invoice.id$': invoiceId
+      })
+      return res.json({
+        data: items
+      })
+    }
+
+    // Envió los 4 campos llenos 
+    if(areUniquesNotEmpty(req.body, ['providerId', 'invoiceId', 'categoryId', 'date',])) {
+      const items = await filterBy({
+        '$Invoice.id$': invoiceId,
+        '$Category.id$': categoryId,
+      })
+      return res.json({
+        data: items
+      })
+    }
+    // DEvolverá todos los items registrados
+    return res.json({
+      data: await Inventory.findAndCountAll()
     })
   } catch(error) {
     console.log(error)
@@ -38,6 +137,19 @@ async function getAll(req, res) {
     let errorKeys = [errorName]
     return res.status(400).json({ errors, errorKeys})
   }
+}
+
+async function filterBy(where) {
+  return await Inventory.findAndCountAll({
+    include: [
+      {
+        model: Invoice,
+        include: [ Provider ]
+      }, Category
+    ],
+    raw: true,
+    where
+  })
 }
 
 async function paginate(req, res) {
@@ -210,83 +322,86 @@ async function add(req, res) {
 async function update(req, res) {
   const transaction = await sequelize.transaction()
   try {
-    //await Inventory.update(req.body, {where: {id: req.found.id}}, {transaction})
-    // Verificamos si envio imagens nuevas del item
-    let filesCopy = {...req.files}
-    if(req.files) {
-      if(req.files.images) {
-        // Obtengo los nombres de la imagenes guardadas
-        req.files.images = (await Image.findAll({where: {inventoryId: req.params.id}})).map((img) => ({filename: img.name}))
-        // Elimino las imagenes que tenia previamente
-        const affected = await Image.destroy({where: {inventoryId: req.params.id}},{transaction})
-        if(affected > 0) {
-          // Elimino las images de la carpeta de uploads
-          let hasBeenError = imagesWereDeleted(req)
-          if(hasBeenError) {
-            return res.json(hasBeenError)
-          } else {
-            req.files.images = filesCopy.images
-            let errors = await saveImagesInDB(req, req.params.id, transaction) 
-            // Eliminamos la propiedad images de la request
-            delete req.files.images
-            if(errors) {
-              return res.json(errors)
-            }
-          }
-        } else {
-          transaction.rollback()
-          return res.json({
-            error: true,
-            msg:'Item no se ha actualizado. Imagenes del item no pudieron ser actualizadas'
-          })
-        }
+    await Inventory.update(req.body, {where: {id: req.found.id}}, {transaction})
+    // Verificamos si envio imagenes nuevas del item
+    if((!req.files || Object.keys(req.files).length === 0) && parseInt(req.body.damaged) > 0) {
+      // Si todo ha ido bien guardamos los cambios
+      await transaction.commit()
+      return res.json({
+        done: true,
+        msg: 'Item actualizado correctamente'
+      })
+    }
+    // Obtenemos todas las imagenes que este item tenga previamente guardadas
+    let allImages = {
+      files: {
+        images: (await Image.findAll({where: {inventoryId: req.params.id}})).map((img) => ({filename: img.name})),
+        imgDamaged: (await DamagedImage.findAll({where: {inventoryId: req.params.id}})).map((img) => ({filename: img.name}))
       }
-      
-      if(parseInt(req.body.damaged) === 0) {
-        // Obtengo los nombres de la imagenes guardadas
-        req.files.imgDamaged = (await DamagedImage.findAll({where: {inventoryId: req.params.id}})).map((img) => ({filename: img.name}))
-        // Elimino las imagenes que tenia previamente
-        let deleted = await DamagedImage.destroy({where: {inventoryId: req.params.id}},{transaction})
-        if(deleted > 0) {
-          // Elimino las images de la carpeta de uploads
-          let hasBeenError = imagesWereDeleted(req)
+    }
+    // Varificamos si nos estan enviando imagenes nuevas para actualizar
+    if(req.files.images) {
+      if(req.files.images.length > 0) {
+        // Verificamos si este item ya tiene imagenes guardadas previamente
+        if(allImages.files.images.length > 0) {
+          // Eliminamos las imagenes que haya guardado previamente en la BD
+          await Image.destroy({where: {inventoryId: req.params.id}},{transaction})
+          // Eliminamos las imagenes de la carpeta upload
+          let hasBeenError = imagesWereDeleted({files: {images: allImages.files.images}})
+          /// Verificamos si hay error al eliminar los archivos de las imagenes
           if(hasBeenError) {
             transaction.rollback()
             return res.json(hasBeenError)
-          } 
-        }
-      }
-
-      if(parseInt(req.body.damaged) > 0  && req.files.imgDamaged) {
-        // Obtengo los nombres de la imagenes guardadas
-        req.files.imgDamaged = (await DamagedImage.findAll({where: {inventoryId: req.params.id}})).map((img) => ({filename: img.name}))
-        // Verifico si hay imagenes guardadas sino no hago nada
-        if(req.files.imgDamaged.length > 0) {
-          // Elimino las imagenes que tenia previamente
-          const affected = await DamagedImage.destroy({where: {inventoryId: req.params.id}},{transaction})
-          if(affected > 0) {
-            // Elimino las images de la carpeta de uploads
-            let hasBeenError = imagesWereDeleted(req)
-            if(hasBeenError) {
-              transaction.rollback()
-              return res.json(hasBeenError)
-            }
           }
         }
-        // Guardamos la nuevas images de daños
-        req.files.imgDamaged = filesCopy.imgDamaged
-        let errors = await saveImagesInDB(req, req.params.id, transaction) 
-        if(errors) {
+        // Creamos un arreglo copia
+        let images = []
+        // Procesamos la informacion de las imagenes para tener formato deseado
+        req.files.images.forEach((img) => (images.push({name: img.filename, inventoryId: req.params.id})))
+        // Guardo las nuevas imagenes
+        await Image.bulkCreate(images)
+      }
+    }
+
+    // Varificamos si nos estan enviando imagenes nuevas para actualizar
+    if(req.files.imgDamaged) {
+      if(req.files.imgDamaged.length > 0) {
+        // Verificamos si este item ya tiene imagenes guardadas previamente
+        if(allImages.files.imgDamaged.length > 0) {
+          // Eliminamos las imagenes que haya guardado previamente en la BD
+          await DamagedImage.destroy({where: {inventoryId: req.params.id}},{transaction})
+          // Eliminamos las imagenes de la carpeta upload
+          let hasBeenError = imagesWereDeleted({files: {imgDamaged: allImages.files.imgDamaged}})
+          /// Verificamos si hay error al eliminar los archivos de las imagenes
+          if(hasBeenError) {
+            transaction.rollback()
+            return res.json(hasBeenError)
+          }
+        }
+        // Creamos un arreglo copia
+        let images = []
+        // Procesamos la informacion de las imagenes para tener formato deseado
+        req.files.imgDamaged.forEach((img) => (images.push({name: img.filename, inventoryId: req.params.id})))
+        // Guardo las nuevas imagenes
+        await DamagedImage.bulkCreate(images)
+      }
+    }
+    // Si quitó los daños entonces eliminamos todas la imagenes
+    if(parseInt(req.body.damaged) === 0) {
+      // Verificamos si este item ya tiene imagenes guardadas previamente
+      if(allImages.files.imgDamaged.length > 0) {
+        // Eliminamos las imagenes que haya guardado previamente en la BD
+        await DamagedImage.destroy({where: {inventoryId: req.params.id}},{transaction})
+        // Eliminamos las imagenes de la carpeta upload
+        let hasBeenError = imagesWereDeleted({files: {imgDamaged: allImages.files.imgDamaged}})
+        /// Verificamos si hay error al eliminar los archivos de las imagenes
+        if(hasBeenError) {
           transaction.rollback()
-          return res.json({
-            error: true,
-            msg:'Item no se ha actualizado. Imagenes de daños item no pudieron ser actualizadas'
-          })
+          return res.json(hasBeenError)
         }
       }
     }
-    // Si todo ha ido bien guardamos los cambios
-    await transaction.commit()
+    await transaction.commit( )
     return res.json({
       done: true,
       msg: 'Item actualizado correctamente'
@@ -368,7 +483,7 @@ module.exports = {
   update,
   remove,
   paginate,
-  getAll,
+  getByFilterReport,
   getImages,
   findInvoices,
   paginateAndFilter
