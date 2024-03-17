@@ -1,5 +1,5 @@
 const sequelize = require('../database/config')
-const { Op } = require('sequelize')
+const { Op, literal } = require('sequelize')
 const { getErrorFormat } = require('../utils/errorsFormat')
 const Provider = require('../models/providerModel')
 const Invoice = require('../models/invoiceModel')
@@ -203,30 +203,33 @@ async function paginateAndFilter(req, res) {
     let { filter, perPage, currentPage } = req.body
     perPage = parseInt(perPage)
     currentPage = parseInt(currentPage)
+    let where = {
+      [Op.or]: [
+        { name: { [Op.like]: '%' + filter + '%' } },
+        { description: { [Op.like]: '%' + filter + '%' } },
+        { '$Invoice.code$': { [Op.like]: '%' + filter + '%' } },
+        { '$Invoice.Provider.name$': { [Op.like]: '%' + filter + '%' } },
+        { '$Category.name$': { [Op.like]: '%' + filter + '%' } },
+        literal(`CAST(price AS CHAR) LIKE '%${filter}%'`),
+        literal(`CAST(damaged AS CHAR) LIKE '%${filter}%'`),
+        literal(`CAST(quantity AS CHAR) LIKE '%${filter}%'`)
+        
+      ]      
+    }
     let inventors = await Inventory.findAndCountAll({
       include: [ 
         {
           model: Invoice,
-          include: [{ model: Provider }]
+          include: [Provider]
         }, 
         Category
       ],
       raw: true,
       limit: perPage,
       offset: (currentPage - 1) * perPage,
-      where: { 
-        [Op.or]: [
-          { name: { [Op.like]: `%${filter}%` } },
-          { price: { [Op.eq]: filter } },
-          { quantity: { [Op.eq]: filter } },
-          { damaged: { [Op.eq]: filter } },
-          { description: { [Op.like]: `%${filter}%` } },
-          { '$Invoice.code$': { [Op.like]: `%${filter}%` } },
-          { '$Invoice.Provider.name$': { [Op.like]: `%${filter}%` } },
-          { '$Category.name$': { [Op.like]: `%${filter}%` } }
-        ]
-      }
+      where
     })
+    
     res.json({ data: inventors })
   } catch(error) {
     console.log(error)
